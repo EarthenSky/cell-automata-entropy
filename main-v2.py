@@ -5,7 +5,7 @@ import random
 
 # Setup Constants
 SCREEN_SIZE = [1024, 768]
-FPS = 300
+FPS = 30
 
 # Call functions after file guard.
 if __name__ == "__main__":
@@ -18,14 +18,10 @@ if __name__ == "__main__":
 dt = 0
 game_stopped = False
 
-# Application Constants
-CELL_OUTER_RATE = 0.4/4;  #0.4 This is the speed that the outer (colour) value is changed by.
-CELL_INNNER_RATE = 0.7/2;  #0.7 This is the speed that the stored value is changed by.  0.3 == 30% average.
-
-WORLD_SIZE = 48  # Is width & height.
-CELL_SIZE = 12  # Is width & height.
-CELL_APPEARANCE = 0  # Smaller means more cells.
-VAL_RANGE = 359
+WORLD_SIZE = 64  # Is width & height.
+CELL_SIZE = 8 # Is width & height.
+CELL_APPEARANCE = 2  # Smaller means more cells.
+VAL_RANGE = 300
 
 # Cells are formatted: (hsv-outer, hsv-innner)
 # -1 in the first slot means that there is no cell there: (-1, hue)
@@ -36,9 +32,9 @@ def init():
 
     random.seed()  # Init rng
 
-    # Create 64*64 array of tuples. (a folded matrix)
+    # Create 64*64 array of numbers. (an un-folded matrix)
     g_cell_array = [
-        (random.randint(0, VAL_RANGE) if random.randint(0, CELL_APPEARANCE) == 0 else -1, 0)
+        1 if random.randint(0, CELL_APPEARANCE) == 0 else 0
         for n in range(0, WORLD_SIZE**2)]
 
 # This function handles any input.  Called before draw.
@@ -58,10 +54,10 @@ def draw():
     for i in range(0, len(g_cell_array)):
         r = pygame.Rect(i%WORLD_SIZE*CELL_SIZE, i//WORLD_SIZE*CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-        if g_cell_array[i][0] != -1:
-            c = pygame.Color(0, 0, 0, 0)
-            c.hsva = (g_cell_array[i][0], 100, 100, 100)
-            pygame.draw.rect(DISPLAY_SURFACE, c, r)
+        if g_cell_array[i] == 2:
+            pygame.draw.rect(DISPLAY_SURFACE, (255, 255, 255), r)  # Draws white Box
+        elif g_cell_array[i] == 1:
+            pygame.draw.rect(DISPLAY_SURFACE, (254/2, 254/2, 254/2), r)  # Draws white Box
         else:
             pygame.draw.rect(DISPLAY_SURFACE, (0, 0, 0), r)  # Draws Black Box
 
@@ -73,25 +69,26 @@ def update():
 
     # Iterate all cells and do operations on them.
     for i in range(0, len(g_cell_array)):
-        if cell_array_cpy[i][0] != -1:
-            new_val = 0
-            for x in range(-1, 2):
-                for y in range(-1, 2):
-                    if (x!=0) and (y!=0) :
-                        key = i+x+y*WORLD_SIZE
-                        if x%WORLD_SIZE == WORLD_SIZE-1:
-                            key -= (WORLD_SIZE-1)
-                        if y == 1 and i//WORLD_SIZE == WORLD_SIZE-1:
-                            key -= WORLD_SIZE**2
-                        if x == 1 and i%WORLD_SIZE == WORLD_SIZE-1:
-                            key -= 2
-                        new_val += cell_array_cpy[key][0]
+        side_sum = 0
 
-            new_inner_val = cell_array_cpy[i][1]*(1-CELL_INNNER_RATE) + CELL_INNNER_RATE*new_val
-            new_outer_val = cell_array_cpy[i][0]*(1-CELL_OUTER_RATE) + new_inner_val*CELL_OUTER_RATE
-            g_cell_array[i] = (new_outer_val if new_outer_val < VAL_RANGE else new_outer_val - VAL_RANGE,
-                                new_inner_val if new_inner_val < VAL_RANGE else new_inner_val - VAL_RANGE)
-            #g_cell_array[i] = (new_outer_val, new_inner_val)
+        # down case.
+        if i//WORLD_SIZE == WORLD_SIZE-1:
+            side_sum += cell_array_cpy[i-(WORLD_SIZE**2-WORLD_SIZE)]
+        else:
+            side_sum += cell_array_cpy[i+WORLD_SIZE]
+
+        # up case.
+        if i//WORLD_SIZE == 0:
+            side_sum += cell_array_cpy[i+(WORLD_SIZE**2-WORLD_SIZE)]
+        else:
+            side_sum += cell_array_cpy[i-WORLD_SIZE]
+
+        if side_sum == 2:
+            g_cell_array[i] = 2
+        elif side_sum == 1:
+            g_cell_array[i] = 0
+        else:
+            g_cell_array[i] = 1
 
 
 # This is the gameloop section of code.
